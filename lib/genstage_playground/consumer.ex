@@ -6,11 +6,11 @@ defmodule GenstagePlayground.Consumer do
   end
 
   def init(_) do
-    {:consumer, {nil, nil, nil}, subscribe_to: [GenstagePlayground.ProducerConsumer]}
+    {:consumer, nil, subscribe_to: [GenstagePlayground.ProducerConsumer]}
   end
 
-  def handle_subscribe(:producer, _options, from, _state) do
-    {:manual, {from, nil}}
+  def handle_subscribe(:producer, _options, producer, _state) do
+    {:manual, {producer, nil}}
   end
 
   def begin() do
@@ -27,28 +27,28 @@ defmodule GenstagePlayground.Consumer do
     end
   end
 
-  def handle_call(:register, {notify, _ref}, {from, nil}) do
-    {:reply, :ok, [], {from, notify}}
+  def handle_call(:register, {notify, _ref}, {producer, nil}) do
+    {:reply, :ok, [], {producer, notify}}
   end
 
-  def handle_cast(:begin, {from, _notify} = state) do
+  def handle_cast(:begin, {producer, _notify} = state) do
     IO.puts "C Beginning"
-    GenStage.ask(from, 1)
+    GenStage.ask(producer, 1)
     {:noreply, [], state}
   end
 
-  def handle_events([:done], _from, {_from, notify} = state) do
+  def handle_events([:done], _from, {_producer, notify} = state) do
     IO.puts "C Received done"
     send(notify, :done)
     {:noreply, [], state}
   end
 
-  def handle_events(events, from, state) do
+  def handle_events(events, _from, {producer, _notify} = state) do
     for event <- events do
       IO.puts "C Processing event #{event}"
     end
 
-    GenStage.ask(from, 1)
+    GenStage.ask(producer, 1)
     # As a consumer we never emit events
     {:noreply, [], state}
   end
